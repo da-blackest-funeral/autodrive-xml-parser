@@ -153,7 +153,7 @@
         /**
          * @return void
          */
-        private function createGroups() {
+        private function createGroups(): void {
             $existingGroups = Group::all('id')->pluck('id');
 
             foreach ($this->groups as $group) {
@@ -201,7 +201,7 @@
         }
 
         /**
-         * @param array $element
+         * @param array|string $element
          * @param Collection $existingElements
          * @return bool
          */
@@ -211,19 +211,6 @@
         ): bool {
             return !isset($element['@content']) ||
                 $existingElements->contains($element['@content']);
-        }
-
-        /**
-         * @return Collection
-         */
-        private function pluckElements(): Collection {
-            return $this->groups
-                ->pluck('element')
-                ->collapse()
-                ->values()
-                ->pluck('@attributes.id')
-                ->unique()
-                ->whereNotNull();
         }
 
         /**
