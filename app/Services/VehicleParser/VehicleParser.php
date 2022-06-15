@@ -24,6 +24,11 @@
         private array $attributes = [];
 
         /**
+         * @var Collection
+         */
+        private Collection $groups;
+
+        /**
          * @param string $file
          * @return void
          */
@@ -32,6 +37,14 @@
                 XmlToArray::convert(file_get_contents($file))['vehicle']
             )->take(30);
 
+            $this->groups = $vehicles->pluck('equipment')
+                ->whereNotNull()
+                ->values()
+                ->pluck('group')
+                ->collapse()
+                ->unique('@attributes.id');
+
+            $this->deleteVehicles($vehicles->pluck('id'));
             $this->parseAllVehicles($vehicles);
         }
 
@@ -40,19 +53,31 @@
          * @return void
          */
         private function parseAllVehicles(Collection $vehicles): void {
-            foreach ($vehicles as $vehicleData) {
-                $this->attributes = [];
-                $this->parseAttributes($vehicleData);
-                $formattedVehicle = $this->formatVehicle($vehicleData);
-                /** @var Vehicle $vehicle */
-                Vehicle::firstOrCreate(
-                    array_merge($formattedVehicle, $this->attributes)
-                );
+            $existingVehiclesIds = Vehicle::all('id');
 
-                if (!empty($vehicleData['equipment'])) {
-                    $this->syncRelation($vehicleData);
+            foreach ($vehicles as $vehicle) {
+                $this->attributes = [];
+                $this->parseAttributes($vehicle);
+                $formattedVehicle = $this->formatVehicle($vehicle);
+
+                if (!$existingVehiclesIds->contains($vehicle['id'])) {
+                    Vehicle::create(array_merge($formattedVehicle, $this->attributes));
+                }
+
+                if (!empty($vehicle['equipment'])) {
+                    $this->syncRelation($vehicle);
                 }
             }
+        }
+
+        /**
+         * @param Collection $ids
+         * @return void
+         */
+        private function deleteVehicles(Collection $ids) {
+            Vehicle::query()
+                ->whereNotIn('id', $ids)
+                ->delete();
         }
 
         /**
@@ -112,11 +137,9 @@
                 return [];
             }
 
-            foreach ($equipment['group'] as $groupData) {
-                Group::firstOrCreate([
-                    'name' => $groupData['@attributes']['name'],
-                ]);
+            $this->createGroups();
 
+            foreach ($equipment['group'] as $groupData) {
                 $elements[] = $this->parseElements(
                     $groupData['element'],
                     $groupData['@attributes']['id'],
@@ -125,6 +148,19 @@
             }
 
             return $elements ?? [];
+        }
+
+        /**
+         * @return void
+         */
+        private function createGroups() {
+            $existingGroups = Group::all('id');
+
+            foreach ($this->groups as $group) {
+                if (!$existingGroups->contains($group['@attributes']['id'])) {
+                    Group::create($group['@attributes']);
+                }
+            }
         }
 
         /**

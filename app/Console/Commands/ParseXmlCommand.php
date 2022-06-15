@@ -12,7 +12,7 @@ class ParseXmlCommand extends Command
      *
      * @var string
      */
-    protected $signature = 'xml:parse {file=/home/vagrant/code/IDS/storage/app/xml/data.xml}';
+    protected $signature = 'xml:parse {file=/home/vagrant/code/autodrive/storage/app/xml/data.xml}';
 
     /**
      * The console command description.
