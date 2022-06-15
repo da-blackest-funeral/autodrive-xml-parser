@@ -53,7 +53,7 @@
          * @return void
          */
         private function parseAllVehicles(Collection $vehicles): void {
-            $existingVehiclesIds = Vehicle::all('id');
+            $existingVehiclesIds = Vehicle::all('id')->pluck('id');
 
             foreach ($vehicles as $vehicle) {
                 $this->attributes = [];
@@ -154,7 +154,7 @@
          * @return void
          */
         private function createGroups() {
-            $existingGroups = Group::all('id');
+            $existingGroups = Group::all('id')->pluck('id');
 
             foreach ($this->groups as $group) {
                 if (!$existingGroups->contains($group['@attributes']['id'])) {
@@ -170,28 +170,60 @@
          * @return array
          */
         private function parseElements(array $elementsData, int $groupId, int $vehicleId): array {
-            $elements = [];
+            $existingElements = Element::all('name')->pluck('name');
+
+            $result = [];
             foreach ($elementsData as $element) {
+                if ($this->elementAlreadyExists($element, $existingElements)) {
+                    continue;
+                }
+
                 if (isset($element['@content'])) {
-                    $element = Element::firstOrCreate([
+                    $element = Element::create([
                         'name' => $element['@content'],
                     ]);
                 } elseif (is_array($element)) {
-                    $element = Element::firstOrCreate($element);
+                    $element = Element::create($element);
                 } else {
-                    $element = Element::firstOrCreate([
+                    $element = Element::create([
                         'name' => $element,
                     ]);
                 }
 
-                $elements[] = [
+                $result[] = [
                     'element_id' => $element->id,
                     'group_id' => $groupId,
                     'vehicle_id' => $vehicleId
                 ];
             }
 
-            return $elements;
+            return $result;
+        }
+
+        /**
+         * @param array $element
+         * @param Collection $existingElements
+         * @return bool
+         */
+        private function elementAlreadyExists(
+            array|string $element,
+            Collection $existingElements
+        ): bool {
+            return !isset($element['@content']) ||
+                $existingElements->contains($element['@content']);
+        }
+
+        /**
+         * @return Collection
+         */
+        private function pluckElements(): Collection {
+            return $this->groups
+                ->pluck('element')
+                ->collapse()
+                ->values()
+                ->pluck('@attributes.id')
+                ->unique()
+                ->whereNotNull();
         }
 
         /**
