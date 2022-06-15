@@ -24,14 +24,10 @@
         private array $attributes = [];
 
         /**
-         * @param string|null $file
+         * @param string $file
          * @return void
          */
-        public function parse(string $file = null): void {
-            if (is_null($file)) {
-                $file = storage_path('app/xml/data.xml');
-            }
-
+        public function parse(string $file): void {
             $vehicles = collect(
                 XmlToArray::convert(file_get_contents($file))['vehicle']
             )->take(30);
@@ -117,8 +113,7 @@
             }
 
             foreach ($equipment['group'] as $groupData) {
-                /** @var Group $group */
-                $group = Group::firstOrCreate([
+                Group::firstOrCreate([
                     'name' => $groupData['@attributes']['name'],
                 ]);
 

@@ -4,5 +4,5 @@
 
     interface Parser
     {
-        public function parse(string $file = null): void;
+        public function parse(string $file): void;
     }
